@@ -26,30 +26,49 @@
     });
   }
 
+  // ============ PROJECT MANAGEMENT (chrome.storage) ============
+
   async function listProjects() {
-    try {
-      const response = await sendNativeMessage({ action: 'list_projects' });
-      if (response.success) {
-        return { projects: response.projects, default: response.default };
-      }
-      throw new Error(response.error || 'Unknown error');
-    } catch (e) {
-      console.error('[CCS] Failed to list projects:', e);
-      return { projects: [], default: null, error: e.message };
-    }
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(['projects', 'defaultProject'], (data) => {
+        const projects = data.projects || [];
+        if (projects.length === 0) {
+          resolve({
+            projects: [],
+            default: null,
+            error: 'No projects configured. Click the extension icon to add projects.'
+          });
+        } else {
+          resolve({
+            projects: projects,
+            default: data.defaultProject || projects[0]?.id || null
+          });
+        }
+      });
+    });
   }
 
-  async function saveFile(projectId, path, content) {
+  // ============ FILE OPERATIONS ============
+
+  async function saveFile(absolutePath, content) {
     try {
       const response = await sendNativeMessage({
         action: 'save',
-        project: projectId,
-        path: path,
+        path: absolutePath,
         content: content
       });
       return response;
     } catch (e) {
       return { success: false, error: e.message };
+    }
+  }
+
+  async function testConnection() {
+    try {
+      const response = await sendNativeMessage({ action: 'ping' });
+      return response.success === true;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -75,22 +94,23 @@
 
   function parseFilenameFromContext(surroundingText, codeContent) {
     const patterns = [
-      /(?:save|create|name|call|called|file|filename)[:\s]+[`"']?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)[`"']?/i,
-      /[`"']([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)[`"'](?:\s+file)?/i,
-      /(?:in|at|to)\s+[`"']?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)[`"']?/i,
+      /(?:save|create|name|call|called|file|filename)[:\s]+[`']?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)[`']?/i,
+      /[`']([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)[`']/,
+      /(?:in|to|at)\s+[`']?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)[`']?/i,
     ];
+
     for (const pattern of patterns) {
       const match = surroundingText.match(pattern);
-      if (match?.[1]) return { filename: match[1], source: 'context' };
+      if (match && match[1]) {
+        return { filename: match[1], source: 'context' };
+      }
     }
-    const firstLines = codeContent.split('\n').slice(0, 3).join('\n');
-    const commentPatterns = [
-      /(?:\/\/|#|\/\*)\s*(?:file|filename)?:?\s*([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)/i,
-    ];
-    for (const pattern of commentPatterns) {
-      const match = firstLines.match(pattern);
-      if (match?.[1]) return { filename: match[1], source: 'code comment' };
+
+    const firstLineMatch = codeContent.match(/^(?:\/\/|#|--|;)\s*(?:file(?:name)?:?\s*)?([a-zA-Z0-9_\-./]+\.[a-zA-Z0-9]+)/i);
+    if (firstLineMatch) {
+      return { filename: firstLineMatch[1], source: 'comment' };
     }
+
     return null;
   }
 
@@ -108,32 +128,42 @@
     return 'txt';
   }
 
+  // ============ PATH UTILITIES ============
+
+  function joinPath(root, relativePath) {
+    // Normalize: remove leading slashes from relative path
+    const cleanRelative = relativePath.replace(/^\/+/, '');
+    // Normalize: remove trailing slash from root
+    const cleanRoot = root.replace(/\/+$/, '');
+    return `${cleanRoot}/${cleanRelative}`;
+  }
+
   // ============ MODAL ============
 
   async function showSaveModal(code, detectedInfo, onSave, onCancel) {
     const { projects, default: defaultProject, error } = await listProjects();
-    
+
     if (error || projects.length === 0) {
-      alert(`Copilot Code Saver: ${error || 'No projects configured'}\n\nEdit ~/.config/copilot-code-saver/projects.toml to add projects.`);
+      alert(`Copilot Code Saver: ${error || 'No projects configured'}\n\nClick the extension icon to add projects.`);
       onCancel();
       return;
     }
 
     const overlay = document.createElement('div');
     overlay.className = 'ccs-modal-overlay';
-    
+
     const ext = detectedInfo.ext || 'txt';
     const defaultFilename = detectedInfo.filename || `snippet-${Date.now().toString(36)}.${ext}`;
-    
+
     chrome.storage.sync.get(['lastProject'], (stored) => {
-      const selectedProject = stored.lastProject || defaultProject || projects[0]?.id;
-      
-      const projectOptions = projects.map(p => 
-        `<option value="${p.id}" ${p.id === selectedProject ? 'selected' : ''}>${p.name}</option>`
+      const selectedProjectId = stored.lastProject || defaultProject || projects[0]?.id;
+
+      const projectOptions = projects.map(p =>
+        `<option value="${p.id}" ${p.id === selectedProjectId ? 'selected' : ''}>${p.name}</option>`
       ).join('');
-      
-      const selectedProjectData = projects.find(p => p.id === selectedProject);
-      
+
+      const selectedProjectData = projects.find(p => p.id === selectedProjectId);
+
       overlay.innerHTML = `
         <div class="ccs-modal">
           <h3>💾 Save to Project</h3>
@@ -152,7 +182,7 @@
           
           <label>Full Path Preview</label>
           <div class="ccs-preview" id="ccs-preview">
-            ${selectedProjectData?.root || ''}/${defaultFilename}
+            ${joinPath(selectedProjectData?.root || '', defaultFilename)}
           </div>
           
           <div class="ccs-modal-buttons">
@@ -161,37 +191,54 @@
           </div>
         </div>
       `;
-      
+
       document.body.appendChild(overlay);
-      
+
       const projectSelect = overlay.querySelector('#ccs-project');
       const pathInput = overlay.querySelector('#ccs-path');
       const preview = overlay.querySelector('#ccs-preview');
-      
+
       function updatePreview() {
         const proj = projects.find(p => p.id === projectSelect.value);
-        const path = pathInput.value.replace(/^\/+/, '');
-        preview.textContent = `${proj?.root || ''}/${path}`;
+        const relativePath = pathInput.value.replace(/^\/+/, '');
+        preview.textContent = joinPath(proj?.root || '', relativePath);
       }
-      
+
       projectSelect.addEventListener('change', updatePreview);
       pathInput.addEventListener('input', updatePreview);
       pathInput.focus();
       pathInput.select();
-      
+
       overlay.querySelector('#ccs-cancel').addEventListener('click', () => {
         overlay.remove();
         onCancel();
       });
-      
+
       overlay.querySelector('#ccs-save').addEventListener('click', async () => {
         const projectId = projectSelect.value;
-        const path = pathInput.value.trim().replace(/^\/+/, '');
+        const project = projects.find(p => p.id === projectId);
+        const relativePath = pathInput.value.trim().replace(/^\/+/, '');
+        
+        if (!project) {
+          alert('Please select a project');
+          return;
+        }
+        
+        if (!relativePath) {
+          alert('Please enter a file path');
+          return;
+        }
+
+        // Build absolute path
+        const absolutePath = joinPath(project.root, relativePath);
+        
+        // Remember last used project
         chrome.storage.sync.set({ lastProject: projectId });
+        
         overlay.remove();
-        onSave(projectId, path);
+        onSave(absolutePath);
       });
-      
+
       overlay.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
           overlay.remove();
@@ -240,35 +287,37 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.12);
       z-index: 10000;
     `;
-    
+
     btn.addEventListener('mouseenter', () => {
       btn.style.background = '#0078d4';
       btn.style.color = 'white';
       btn.style.borderColor = '#0078d4';
     });
+
     btn.addEventListener('mouseleave', () => {
       btn.style.background = 'rgba(255, 255, 255, 0.95)';
       btn.style.color = '#444';
       btn.style.borderColor = 'rgba(0, 0, 0, 0.15)';
     });
-    
+
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
-      
+
       const surroundingText = findSurroundingText(preElement);
       const parsedFilename = parseFilenameFromContext(surroundingText, code);
       const ext = detectLanguage(codeEl);
-      
+
       const detectedInfo = {
         filename: parsedFilename?.filename || null,
         source: parsedFilename?.source || null,
         ext: ext
       };
-      
+
       showSaveModal(code, detectedInfo,
-        async (projectId, path) => {
-          const result = await saveFile(projectId, path, code);
+        async (absolutePath) => {
+          // onSave callback - now receives absolute path
+          const result = await saveFile(absolutePath, code);
           if (result.success) {
             btn.innerHTML = ICONS.check;
             btn.title = `Saved to ${result.full_path}`;
@@ -282,7 +331,7 @@
             btn.title = 'Save to project';
           }, 2000);
         },
-        () => {}
+        () => {} // onCancel
       );
     });
 
@@ -299,5 +348,5 @@
   processCodeBlocks();
   observer.observe(document.body, { childList: true, subtree: true });
 
-  console.log('[Copilot Code Saver] Loaded v0.3.1');
+  console.log('[Copilot Code Saver] Loaded v0.4.0');
 })();

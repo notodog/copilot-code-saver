@@ -3,87 +3,329 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
     body {
-      width: 300px;
+      width: 350px;
       padding: 16px;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       font-size: 13px;
       color: #333;
     }
+    
     h1 {
       font-size: 15px;
       font-weight: 600;
-      margin-bottom: 16px;
-      color: #0078d4;
-    }
-    label {
-      display: block;
-      font-weight: 500;
       margin-bottom: 4px;
-      color: #555;
+      color: #0078d4;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    input, select {
-      width: 100%;
+    
+    .subtitle {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 16px;
+    }
+    
+    /* Status indicator */
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       padding: 8px 10px;
-      margin-bottom: 12px;
-      border: 1px solid #ddd;
       border-radius: 6px;
-      font-size: 13px;
+      font-size: 12px;
+      margin-bottom: 16px;
     }
-    input:focus, select:focus {
+    
+    .status.connected {
+      background: #e6f4ea;
+      color: #1e7e34;
+    }
+    
+    .status.disconnected {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    
+    .status.connected .status-dot {
+      background: #1e7e34;
+    }
+    
+    .status.disconnected .status-dot {
+      background: #c5221f;
+    }
+    
+    /* Section */
+    .section {
+      margin-bottom: 16px;
+    }
+    
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Project list */
+    .project-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .project-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .project-item.is-default {
+      border-color: #0078d4;
+      background: #f0f7ff;
+    }
+    
+    .project-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .project-name {
+      font-weight: 500;
+      color: #333;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .default-badge {
+      font-size: 9px;
+      background: #0078d4;
+      color: white;
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    
+    .project-path {
+      font-size: 11px;
+      color: #666;
+      word-break: break-all;
+      margin-top: 2px;
+      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+    }
+    
+    .project-actions {
+      display: flex;
+      gap: 4px;
+    }
+    
+    .project-actions button {
+      padding: 4px 6px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 4px;
+      color: #666;
+      font-size: 11px;
+    }
+    
+    .project-actions button:hover {
+      background: #e0e0e0;
+      color: #333;
+    }
+    
+    .project-actions button.delete:hover {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 12px;
+    }
+    
+    /* Form */
+    .form {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      margin-bottom: 12px;
+    }
+    
+    .form.visible {
+      display: flex;
+    }
+    
+    .form-title {
+      font-weight: 600;
+      font-size: 12px;
+      color: #333;
+    }
+    
+    .form label {
+      font-size: 11px;
+      color: #555;
+      font-weight: 500;
+    }
+    
+    .form input {
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+      width: 100%;
+    }
+    
+    .form input:focus {
       outline: none;
       border-color: #0078d4;
-      box-shadow: 0 0 0 2px rgba(0,120,212,0.1);
     }
+    
+    .form-buttons {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    
+    /* Buttons */
     button {
-      width: 100%;
-      padding: 10px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    .btn {
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    
+    .btn-primary {
       background: #0078d4;
       color: white;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
     }
-    button:hover { background: #106ebe; }
-    .hint {
+    
+    .btn-primary:hover {
+      background: #106ebe;
+    }
+    
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+    
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+    
+    .btn-add {
+      padding: 6px 10px;
+      font-size: 11px;
+    }
+    
+    /* Footer */
+    .footer {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #eee;
       font-size: 11px;
       color: #888;
-      margin-top: -8px;
-      margin-bottom: 12px;
-    }
-    .saved {
       text-align: center;
-      color: #107c10;
-      margin-top: 8px;
-      opacity: 0;
-      transition: opacity 0.2s;
     }
-    .saved.show { opacity: 1; }
+    
+    .footer a {
+      color: #0078d4;
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <h1>⚡ Copilot Code Saver</h1>
+  <p class="subtitle">Save code blocks directly to your project files</p>
   
-  <label for="projectName">Project Name</label>
-  <input type="text" id="projectName" placeholder="my-app">
-  <p class="hint">Used as prefix in downloaded filenames</p>
+  <!-- Connection status -->
+  <div class="status disconnected" id="status">
+    <span class="status-dot"></span>
+    <span id="status-text">Checking native host...</span>
+  </div>
   
-  <label for="defaultSubdir">Default Subdirectory</label>
-  <input type="text" id="defaultSubdir" placeholder="src/">
-  <p class="hint">e.g., src/, lib/, components/</p>
+  <!-- Add/Edit project form -->
+  <div class="form" id="project-form">
+    <div class="form-title" id="form-title">Add Project</div>
+    <input type="hidden" id="edit-id">
+    
+    <div>
+      <label for="project-name">Project Name</label>
+      <input type="text" id="project-name" placeholder="My Application">
+    </div>
+    
+    <div>
+      <label for="project-root">Root Path (absolute)</label>
+      <input type="text" id="project-root" placeholder="/home/username/projects/my-app">
+    </div>
+    
+    <div class="form-buttons">
+      <button class="btn btn-secondary" id="form-cancel">Cancel</button>
+      <button class="btn btn-primary" id="form-save">Save Project</button>
+    </div>
+  </div>
   
-  <label for="namingStrategy">Naming Strategy</label>
-  <select id="namingStrategy">
-    <option value="context">Smart (parse from context)</option>
-    <option value="prompt">Always prompt</option>
-    <option value="auto">Auto-generate</option>
-  </select>
+  <!-- Projects section -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Projects</span>
+      <button class="btn btn-secondary btn-add" id="add-project">+ Add</button>
+    </div>
+    <div class="project-list" id="project-list">
+      <div class="empty-state">No projects configured yet.</div>
+    </div>
+  </div>
   
-  <button id="save">Save Settings</button>
-  <p class="saved" id="savedMsg">✓ Settings saved!</p>
+  <div class="footer">
+    v0.4.0 · 
+    <a href="#" id="export-config">Export</a> · 
+    <a href="#" id="import-config">Import</a>
+  </div>
   
   <script src="popup.js"></script>
 </body>

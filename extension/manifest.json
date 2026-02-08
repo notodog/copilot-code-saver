@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Copilot Code Saver",
-  "version": "0.3.1",
-  "description": "Save code blocks directly to your project files",
+  "version": "0.4.0",
+  "description": "Save code blocks from AI assistants directly to your project files",
   "permissions": ["activeTab", "storage", "nativeMessaging"],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_title": "Copilot Code Saver"
   },
   "content_scripts": [
     {
@@ -20,5 +21,9 @@
       "css": ["styles.css"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "icons": {
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
 }
