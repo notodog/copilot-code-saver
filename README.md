@@ -15,13 +15,48 @@ When using web-based AI coding assistants without API access, developers face a 
 ## ✨ Features
 
 - **One-click save** — Save button on every code block
-- **Smart filename detection** — Parses surrounding context for filename hints
+- **Smart filename detection** — Automatically detects filenames from context, comments, and code structure
 - **Multi-project support** — Configure projects in the extension popup
 - **Direct filesystem writes** — Files go straight to your project (not Downloads)
 - **Language detection** — Auto-detects file extension from code highlighting
-- **Context-aware paths** — Recognizes paths like "in src/components/" from conversation
+- **Path memory** — Remembers last used directory per project
+- **Confidence indicators** — Shows how confident the detection is (high/medium/low)
 - **Export/Import config** — Backup and restore your project configuration
 - **Cross-device sync** — Projects stored in Chrome sync storage
+
+## 🧠 Smart Filename Detection
+
+The extension uses multiple strategies to detect the correct filename, in priority order:
+
+| Priority | Strategy | Example |
+|----------|----------|---------|
+| 1 | **Code block header** | UI elements showing filename above code |
+| 2 | **Conversation context** | "save this as `utils.rs`", "update your `config.toml`" |
+| 3 | **First-line comment** | `// src/utils.rs` or `# filename: app.py` |
+| 4 | **Code structure** | `fn main()` → `main.rs`, `[package]` → `Cargo.toml` |
+| 5 | **Markdown headers** | `### utils.rs` or `**config.toml**` |
+| 6 | **Smart extraction** | Extracts function/class names from code |
+| 7 | **Fallback** | `snippet-{timestamp}.{ext}` |
+
+### Code Structure Recognition
+
+| Pattern | Detected Filename |
+|---------|-------------------|
+| `fn main()` (Rust) | `main.rs` |
+| `if __name__ == "__main__"` (Python) | `main.py` |
+| `package main` (Go) | `main.go` |
+| `[package]` (TOML) | `Cargo.toml` |
+| `{"name":..., "version":...}` (JSON) | `package.json` |
+| `{"compilerOptions":...}` (JSON) | `tsconfig.json` |
+| `<!DOCTYPE html>` | `index.html` |
+| `FROM ...` (Dockerfile) | `Dockerfile` |
+| `export default function Button` | `Button.jsx` |
+| `class UserController` | `user_controller.py` |
+| `pub struct MyStruct` | `my_struct.rs` |
+
+### Path Memory
+
+The extension remembers your last used directory for each project. If you save a file to `src/components/Button.jsx`, the next save will default to `src/components/`.
 
 ## 🏗️ Architecture
 
@@ -33,14 +68,16 @@ When using web-based AI coding assistants without API access, developers face a 
 │  │             │  │             │  │ (Project Management)    │ │
 │  │ - Injects   │  │ - Bridges   │  │                         │ │
 │  │   save btn  │  │   content ↔ │  │ - Add/Edit/Delete       │ │
-│  │ - Shows     │  │   native    │  │   projects              │ │
-│  │   modal     │  │   host      │  │ - Set default project   │ │
-│  │ - Resolves  │  │             │  │ - Export/Import config  │ │
-│  │   paths     │  │             │  │                         │ │
+│  │ - Smart     │  │   native    │  │   projects              │ │
+│  │   filename  │  │   host      │  │ - Set default project   │ │
+│  │   detection │  │             │  │ - Export/Import config  │ │
+│  │ - Shows     │  │             │  │                         │ │
+│  │   modal     │  │             │  │                         │ │
 │  └──────┬──────┘  └──────┬──────┘  └─────────────────────────┘ │
 │         │                │                                      │
 │         │ chrome.storage │                                      │
-│         │ (projects)     │                                      │
+│         │ (projects +    │                                      │
+│         │  recent paths) │                                      │
 └─────────┼────────────────┼──────────────────────────────────────┘
           │                │
           │   Chrome       │  Native Messaging
@@ -71,6 +108,7 @@ When using web-based AI coding assistants without API access, developers face a 
 | **Project config in extension** | Stored in `chrome.storage.sync`, not filesystem. Works regardless of sandbox restrictions. |
 | **Stateless native host** | Only handles file I/O. Receives absolute paths, no config parsing needed. |
 | **Path resolution in extension** | Extension joins project root + relative path before sending to native host. |
+| **Smart detection** | Multiple strategies with confidence scoring to minimize manual input. |
 
 ## 📁 Project Structure
 
@@ -78,7 +116,7 @@ When using web-based AI coding assistants without API access, developers face a 
 copilot-code-saver/
 ├── extension/
 │   ├── manifest.json      # Extension manifest (Manifest V3)
-│   ├── content.js         # Injected into Copilot pages
+│   ├── content.js         # Injected into Copilot pages (smart detection)
 │   ├── background.js      # Service worker for native messaging
 │   ├── popup.html         # Project management UI
 │   ├── popup.js           # Project CRUD logic
@@ -167,8 +205,17 @@ EOF
 2. Chat with your AI assistant to generate code
 3. Hover over any code block — a save button (↓) appears in the bottom-right
 4. Click the save button
-5. Select project, edit path if needed, click Save
+5. The filename is auto-detected — edit if needed, then click Save
 6. File is written directly to your project!
+
+### Tips for Better Detection
+
+To help the extension detect filenames more accurately:
+
+1. **Ask the AI to include the filename** — "Create a file called `utils.rs`"
+2. **Use backticks around filenames** — The extension looks for `` `filename.ext` ``
+3. **Add a comment at the top** — `// src/utils.rs` or `# filename: app.py`
+4. **Use standard patterns** — `fn main()` will auto-detect as `main.rs`
 
 ## 🔧 Configuration
 
@@ -278,7 +325,7 @@ cat /tmp/test-ccs.txt
 1. Open DevTools on a Copilot Studio page (F12)
 2. Check Console for `[Copilot Code Saver] Loaded v0.4.0`
 3. Check extension popup for "Native host connected" status
-4. Try saving a code block
+4. Try saving a code block — verify filename detection works
 
 ## 🔄 Migration from v0.3.x
 
@@ -309,6 +356,7 @@ Then use "Import" in the extension popup.
 - [ ] Git integration (branch awareness)
 - [ ] Support more AI chat platforms
 - [ ] Publish to Chrome Web Store
+- [ ] Learn from user corrections (ML-based filename prediction)
 
 ## 📄 License
 
