@@ -63,17 +63,17 @@ The extension remembers your last used directory for each project. If you save a
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BROWSER EXTENSION                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
-│  │ content.js  │  │background.js│  │ popup.html/js           │ │
-│  │             │  │             │  │ (Project Management)    │ │
-│  │ - Injects   │  │ - Bridges   │  │                         │ │
-│  │   save btn  │  │   content ↔ │  │ - Add/Edit/Delete       │ │
-│  │ - Smart     │  │   native    │  │   projects              │ │
-│  │   filename  │  │   host      │  │ - Set default project   │ │
-│  │   detection │  │             │  │ - Export/Import config  │ │
-│  │ - Shows     │  │             │  │                         │ │
-│  │   modal     │  │             │  │                         │ │
-│  └──────┬──────┘  └──────┬──────┘  └─────────────────────────┘ │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
+│  │ content.js  │  │background.js│  │ popup.html/js           │  │
+│  │             │  │             │  │ (Project Management)    │  │
+│  │ - Injects   │  │ - Bridges   │  │                         │  │
+│  │   save btn  │  │   content ↔ │  │ - Add/Edit/Delete       │  │
+│  │ - Smart     │  │   native    │  │   projects              │  │
+│  │   filename  │  │   host      │  │ - Set default project   │  │
+│  │   detection │  │             │  │ - Export/Import config  │  │
+│  │ - Shows     │  │             │  │                         │  │
+│  │   modal     │  │             │  │                         │  │
+│  └──────┬──────┘  └──────┬──────┘  └─────────────────────────┘  │
 │         │                │                                      │
 │         │ chrome.storage │                                      │
 │         │ (projects +    │                                      │
