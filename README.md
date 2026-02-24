@@ -39,7 +39,7 @@ The extension uses multiple strategies to detect the correct filename, in priori
 | 7 | **Fallback** | `snippet-{timestamp}.{ext}` |
 
 ### Code Structure Recognition
- 
+
 | Pattern | Detected Filename |
 |---------|-------------------|
 | `fn main()` (Rust) | `main.rs` |
