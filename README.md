@@ -1,4 +1,4 @@
-# Copilot Code Saver
+# Copilot Code Saver 
  
 A Chrome/Chromium browser extension that saves code blocks from AI assistants (like Microsoft Copilot Studio) directly to your project files — no more copy-paste hell.
 
